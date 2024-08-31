@@ -1,9 +1,11 @@
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
+const { PrismaClient } = require('@prisma/client');
 
 const app = express();
 const server = http.createServer(app);
+const prisma = new PrismaClient();
 
 // Initialize Socket.IO with CORS settings
 const io = socketIo(server, {
@@ -14,7 +16,7 @@ const io = socketIo(server, {
     credentials: true, // Uncomment this if you want to allow credentials (like cookies)
   }
 });
-const onlineUsers = new Map();
+
 
 app.use(express.static('public'));
 
@@ -22,23 +24,70 @@ app.get('/', (req, res) => {
   res.send('Hello World!');
 });
 
-io.on('connection', (socket) => {
-  const userId = socket.handshake.query.userId; // Assume user ID is sent in query
-  onlineUsers.set(userId, true); // Mark the user as online
+io.on('connection', async (socket) => {
+  const userId = socket.handshake.query.userId;
+  // const userExists = await prisma.user.findUnique({ where: { id: userId } });
 
-  console.log(`User ${userId} connected`);
+  console.log(`Received userId: ${userId}`);
 
-  // Notify other users that this user is online
-  io.emit('userStatus', { userId, status: 'online' });
+  if (!userId) {
+    console.error('User ID is undefined');
+    return;
+  }
 
-  socket.on('disconnect', () => {
-    onlineUsers.set(userId, false); // Mark the user as offline
-    console.log(`User ${userId} disconnected`);
+  try {
+    // Attempt to mark the user as online
+    console.log(userId);
+    
+    // let userExists = 1
+    await prisma.user.update({
+      where: { id: userId},
+      data: {
+        onlineStatus: true,
+        lastActive: new Date(),
+      },
+    });
+    if (userId) {
+      // Mark the user as online and update lastActive
+      console.log(`User ${userId} connected`);
 
-    // Notify other users that this user is offline
-    io.emit('userStatus', { userId, status: 'offline' });
+      // Notify other users that this user is online
+      io.emit('userStatus', { userId, status: 'online' });
+    } else {
+      console.warn(`User ${userId} not found on connection.`);
+    }
+  } catch (error) {
+    console.error(`Error updating user ${userId} on connection:`, error);
+  }
+
+  socket.on('disconnect', async () => {
+    try {
+      // Check if the user still exists
+      // const userExists = await prisma.user.findUnique({ where: { id: userId } });
+      // console.log(userExists);
+      
+      if (userId) {
+        // Mark the user as offline
+        await prisma.user.update({
+          where: { id: userId },
+          data: {
+            onlineStatus: false,
+            lastActive: new Date(),
+          },
+        });
+        console.log(`User ${userId} disconnected`);
+
+        // Notify other users that this user is offline
+        io.emit('userStatus', { userId, status: 'offline' });
+      } else {
+        console.warn(`User ${userId} not found on disconnect, might have been deleted.`);
+      }
+    } catch (error) {
+      console.error(`Error updating user ${userId} on disconnect:`, error);
+    }
   });
 });
+
 
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {

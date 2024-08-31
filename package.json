@@ -1,7 +1,12 @@
 {
   "dependencies": {
+    "@prisma/client": "^5.19.0",
     "cors": "^2.8.5",
     "express": "^4.19.2",
+    "mongodb": "^6.8.0",
     "socket.io": "^4.7.5"
+  },
+  "devDependencies": {
+    "prisma": "^5.19.0"
   }
 }

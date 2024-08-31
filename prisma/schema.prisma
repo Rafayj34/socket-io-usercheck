@@ -1,0 +1,108 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model user {
+  id       String @id @default(auto()) @map("_id") @db.ObjectId
+  email    String @unique
+  password String
+  role     String
+  nickname String @unique
+  onlineStatus Boolean?
+  lastActive DateTime?
+
+  student   student?        @relation(name: "studentTouser", fields: [studentId], references: [id])
+  studentId String?         @unique @db.ObjectId
+  sales     sales?          @relation(name: "salesTouser", fields: [salesId], references: [id])
+  salesId   String?         @unique @db.ObjectId
+  pm        projectManager? @relation(name: "pmTouser", fields: [pmID], references: [id])
+  pmID      String?         @unique @db.ObjectId
+  writer    writer?         @relation(name: "writerTouser", fields: [writerID], references: [id])
+  writerID  String?         @unique @db.ObjectId
+
+}
+
+model student {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  contact     String
+  institute   String
+  country     String
+  currency    String
+  gender      String
+  dateOfBirth DateTime
+  jobs        job[]
+  user        user?    @relation("studentTouser") // No need to define fields and references here
+}
+
+model sales {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  contact     String
+  dateOfBirth DateTime
+  expertise   String[]
+  jobs        job[]
+  user        user?    @relation("salesTouser")
+}
+
+model projectManager {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  contact     String
+  dateOfBirth DateTime
+  expertise   String[]
+  jobs        job[]
+  user        user?    @relation("pmTouser")
+}
+
+model writer {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  contact     String
+  gender      String
+  dateOfBirth DateTime
+  expertise   String[]
+  jobs        job[]
+  user        user?    @relation("writerTouser")
+}
+
+model job {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  jobName          String
+  jobType          String   
+  jobLevel         String   
+  jobSubject       String
+  jobStatus        String
+  wordCount        Int
+  referencingStyle String
+  otherDetails     String
+  attachments      String[]
+  jobCost          Int
+  jobPosted        DateTime
+  jobAssigned      DateTime
+  jobReviewed      DateTime
+  jobCompleted     DateTime
+
+  sales   sales  @relation(fields: [salesId], references: [id])
+  salesId String @db.ObjectId
+
+  student   student @relation(fields: [studentId], references: [id])
+  studentId String  @db.ObjectId
+
+  pm   projectManager @relation(fields: [pmID], references: [id])
+  pmID String         @db.ObjectId
+
+  writer   writer @relation(fields: [writerID], references: [id])
+  writerID String @db.ObjectId
+}
