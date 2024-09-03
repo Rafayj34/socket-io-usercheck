@@ -60,14 +60,9 @@ io.on('connection', async (socket) => {
     console.error(`Error updating user ${userId} on connection:`, error);
   }
 
-  socket.on('disconnect', async () => {
-    try {
-      // Check if the user still exists
-      // const userExists = await prisma.user.findUnique({ where: { id: userId } });
-      // console.log(userExists);
-      
-      if (userId) {
-        // Mark the user as offline
+  socket.on('disconnect', () => {
+    setTimeout(async () => {
+      try {
         await prisma.user.update({
           where: { id: userId },
           data: {
@@ -77,14 +72,12 @@ io.on('connection', async (socket) => {
         });
         console.log(`User ${userId} disconnected`);
 
-        // Notify other users that this user is offline
         io.emit('userStatus', { userId, status: 'offline' });
-      } else {
-        console.warn(`User ${userId} not found on disconnect, might have been deleted.`);
+
+      } catch (error) {
+        console.error(`Error updating user ${userId} on disconnect:`, error);
       }
-    } catch (error) {
-      console.error(`Error updating user ${userId} on disconnect:`, error);
-    }
+    }, 10000); // 15 seconds delay
   });
 });
 
